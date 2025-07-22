@@ -44,12 +44,13 @@ def extract_text_from_url(url):
     except Exception as e:
         return f"Failed to fetch: {e}"
 
-# --- Sidebar Inputs ---
+# --- Sidebar Input Selection ---
 st.sidebar.header("Input Options")
 source_option = st.sidebar.radio("Select input source:", ["Paste Text", "Upload PDF", "Enter URL"])
 
 final_text = ""
 
+# --- User Input Logic ---
 if source_option == "Paste Text":
     raw_text = st.text_area("📋 Paste the privacy policy text here:", height=300)
     if st.button("Analyze"):
@@ -65,17 +66,17 @@ elif source_option == "Enter URL":
     if st.button("Analyze"):
         final_text = extract_text_from_url(url)
 
-# --- Analysis ---
+# --- Analysis Section ---
 if final_text:
     st.subheader("📑 Raw Extracted Text")
-    with st.expander("Click to view"):
-        st.write(final_text[:5000])  # limit for preview
+    with st.expander("Click to view full policy text"):
+        st.write(final_text[:5000])  # Preview first 5000 characters
 
-    # AI Summary Box (static simulation here — replace with LLM later)
+    # AI Summary Placeholder (static for now)
     st.subheader("🧠 AI Summary")
     st.info("This policy appears to contain standard clauses. Be cautious of terms like third-party sharing or location tracking.")
 
-    # Run the keyword detection
+    # Run detection
     risks, suspicious_lines = analyze_policy(final_text)
 
     st.subheader("🚨 Risk Detection Results")
@@ -85,7 +86,7 @@ if final_text:
     else:
         st.success("✅ No major risk keywords detected.")
 
-    # Show exact lines
+    # Show lines where they appear
     if suspicious_lines:
         st.subheader("🔎 Lines Containing Suspicious Language")
         for line in suspicious_lines:
