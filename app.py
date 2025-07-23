@@ -7,12 +7,16 @@ import tempfile
 
 # Offline ML summarization
 import nltk
+import os
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.text_rank import TextRankSummarizer
 
-# Download NLTK tokenizer
-nltk.download("punkt")
+# --- NLTK Tokenizer Download Fix ---
+nltk_path = os.path.join(os.getcwd(), "nltk_data")
+os.makedirs(nltk_path, exist_ok=True)
+nltk.download("punkt", download_dir=nltk_path)
+nltk.data.path.append(nltk_path)
 
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
@@ -67,7 +71,7 @@ def summarize_with_local_model(text, sentence_count=5):
 
 def generate_voice(summary_text, lang_code):
     try:
-        short_text = summary_text[:500]  # Limit text length
+        short_text = summary_text[:500]
         tts = gTTS(short_text, lang=lang_code)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
             tts.save(fp.name)
