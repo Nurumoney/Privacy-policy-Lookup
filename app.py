@@ -53,10 +53,9 @@ def generate_voice(text, lang_code):
         tts = gTTS(short_text, lang=lang_code)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
             tts.save(fp.name)
-            return fp.name
+            return fp.name, None
     except Exception as e:
-        st.error(f"Text-to-speech failed: {e}")
-        return None
+        return None, str(e)
 
 # --- Sidebar Input ---
 st.sidebar.header("Input Options")
@@ -84,28 +83,33 @@ if final_text:
     with st.expander("Click to view raw text"):
         st.write(final_text[:5000])
 
-    st.subheader("🎧 Hear the Text in a Local Language")
-    language_choice = st.selectbox("Choose a language:", ["None", "Hausa", "Yoruba"])
-    lang_codes = {"Hausa": "ha", "Yoruba": "yo"}
-
-    if language_choice in lang_codes:
-        lang_code = lang_codes[language_choice]
-        with st.spinner(f"Generating audio in {language_choice}..."):
-            audio_path = generate_voice(final_text, lang_code)
-        if audio_path:
-            st.audio(audio_path, format="audio/mp3")
-        else:
-            st.warning("Audio generation failed.")
-
     st.subheader("🚨 Risk Detection Results")
     risks, suspicious_lines = analyze_policy(final_text)
+
+    result_summary = ""
     if risks:
         for risk in risks:
             st.error(risk)
+        result_summary = "Warning! This policy contains potentially harmful terms. " + " ".join(risks)
     else:
         st.success("✅ No major risk keywords detected.")
+        result_summary = "This policy appears safe. No suspicious terms found."
 
     if suspicious_lines:
         st.subheader("🔎 Lines Containing Suspicious Language")
         for line in suspicious_lines:
             st.code(line, language="markdown")
+
+    # 🎧 Audio of result summary (not full text)
+    st.subheader("🎧 Hear the Risk Analysis in a Local Language")
+    language_choice = st.selectbox("Choose a language:", ["None", "Hausa", "Yoruba"], key="lang_audio")
+    lang_codes = {"Hausa": "ha", "Yoruba": "yo"}
+
+    if language_choice in lang_codes:
+        lang_code = lang_codes[language_choice]
+        with st.spinner(f"Generating voice summary in {language_choice}..."):
+            audio_path, error_msg = generate_voice(result_summary, lang_code)
+        if audio_path:
+            st.audio(audio_path, format="audio/mp3")
+        else:
+            st.warning(f"⚠️ Audio generation failed: {error_msg}")
