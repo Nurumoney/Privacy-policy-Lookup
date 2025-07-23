@@ -8,14 +8,20 @@ import tempfile
 # Offline ML summarization
 import nltk
 import os
+from nltk.data import find
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.text_rank import TextRankSummarizer
 
-# --- NLTK Tokenizer Download Fix ---
+# --- NLTK Tokenizer Setup (Safe for Streamlit Cloud) ---
 nltk_path = os.path.join(os.getcwd(), "nltk_data")
 os.makedirs(nltk_path, exist_ok=True)
-nltk.download("punkt", download_dir=nltk_path)
+
+try:
+    find('tokenizers/punkt')
+except LookupError:
+    nltk.download("punkt", download_dir=nltk_path)
+
 nltk.data.path.append(nltk_path)
 
 # --- Streamlit Page Config ---
