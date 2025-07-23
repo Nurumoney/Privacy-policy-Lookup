@@ -6,11 +6,12 @@ import openai
 from gtts import gTTS
 import tempfile
 
+# --- OpenAI Client Setup (New SDK format) ---
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
 # --- App Setup ---
 st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
 st.title("🔍 Privacy Policy Lookup with AI & Voice Summary")
-
-openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # --- Functions ---
 def analyze_policy(text):
@@ -52,7 +53,7 @@ def extract_text_from_url(url):
 
 def summarize_with_openai(text):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a privacy policy analyst."},
