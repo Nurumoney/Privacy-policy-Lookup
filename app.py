@@ -2,16 +2,17 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import PyPDF2
-import openai
 from gtts import gTTS
 import tempfile
 
-# --- OpenAI Client Setup (New SDK format) ---
-client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# Import for offline ML summarization
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.text_rank import TextRankSummarizer
 
 # --- App Setup ---
 st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
-st.title("🔍 Privacy Policy Lookup with AI & Voice Summary")
+st.title("🔍 Privacy Policy Lookup (Offline AI Summary)")
 
 # --- Functions ---
 def analyze_policy(text):
@@ -51,24 +52,19 @@ def extract_text_from_url(url):
     except Exception as e:
         return f"Failed to fetch: {e}"
 
-def summarize_with_openai(text):
+def summarize_with_local_model(text, sentence_count=5):
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a privacy policy analyst."},
-                {"role": "user", "content": f"Summarize this privacy policy:\n{text[:3000]}"}
-            ],
-            temperature=0.4,
-            max_tokens=300
-        )
-        return response.choices[0].message.content
+        parser = PlaintextParser.from_string(text, Tokenizer("english"))
+        summarizer = TextRankSummarizer()
+        summary = summarizer(parser.document, sentence_count)
+        return " ".join(str(sentence) for sentence in summary)
     except Exception as e:
-        return f"❌ Error generating summary: {e}"
+        return f"❌ Local summary failed: {e}"
 
 def generate_voice(summary_text, lang_code):
     try:
-        tts = gTTS(summary_text, lang=lang_code)
+        short_text = summary_text[:500]  # Truncate long text for safety
+        tts = gTTS(short_text, lang=lang_code)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
             tts.save(fp.name)
             return fp.name
@@ -102,9 +98,9 @@ if final_text:
     with st.expander("Click to view raw text"):
         st.write(final_text[:5000])
 
-    st.subheader("🧠 AI Summary (via GPT)")
-    with st.spinner("Generating summary..."):
-        ai_summary = summarize_with_openai(final_text)
+    st.subheader("🧠 AI Summary (Offline TextRank)")
+    with st.spinner("Generating local summary..."):
+        ai_summary = summarize_with_local_model(final_text)
     st.info(ai_summary)
 
     st.subheader("🎧 Hear the Summary in a Local Language")
