@@ -1,5 +1,6 @@
-openai
-streamlit==1.35.0
+streamlit
 requests
 beautifulsoup4
 PyPDF2
+openai
+gTTS
