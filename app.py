@@ -5,28 +5,9 @@ import PyPDF2
 from gtts import gTTS
 import tempfile
 
-# Offline ML summarization
-import nltk
-import os
-from nltk.data import find
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.text_rank import TextRankSummarizer
-
-# --- NLTK Tokenizer Setup (Safe for Streamlit Cloud) ---
-nltk_path = os.path.join(os.getcwd(), "nltk_data")
-os.makedirs(nltk_path, exist_ok=True)
-
-try:
-    find('tokenizers/punkt')
-except LookupError:
-    nltk.download("punkt", download_dir=nltk_path)
-
-nltk.data.path.append(nltk_path)
-
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
-st.title("🔍 Privacy Policy Lookup (Offline AI Summary)")
+st.title("🔍 Privacy Policy Lookup")
 
 # --- Functions ---
 def analyze_policy(text):
@@ -66,18 +47,9 @@ def extract_text_from_url(url):
     except Exception as e:
         return f"Failed to fetch: {e}"
 
-def summarize_with_local_model(text, sentence_count=5):
+def generate_voice(text, lang_code):
     try:
-        parser = PlaintextParser.from_string(text, Tokenizer("english"))
-        summarizer = TextRankSummarizer()
-        summary = summarizer(parser.document, sentence_count)
-        return " ".join(str(sentence) for sentence in summary)
-    except Exception as e:
-        return f"❌ Local summary failed: {e}"
-
-def generate_voice(summary_text, lang_code):
-    try:
-        short_text = summary_text[:500]
+        short_text = text[:500]
         tts = gTTS(short_text, lang=lang_code)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
             tts.save(fp.name)
@@ -112,19 +84,14 @@ if final_text:
     with st.expander("Click to view raw text"):
         st.write(final_text[:5000])
 
-    st.subheader("🧠 AI Summary (Offline TextRank)")
-    with st.spinner("Generating summary..."):
-        ai_summary = summarize_with_local_model(final_text)
-    st.info(ai_summary)
-
-    st.subheader("🎧 Hear the Summary in a Local Language")
+    st.subheader("🎧 Hear the Text in a Local Language")
     language_choice = st.selectbox("Choose a language:", ["None", "Hausa", "Yoruba"])
     lang_codes = {"Hausa": "ha", "Yoruba": "yo"}
 
     if language_choice in lang_codes:
         lang_code = lang_codes[language_choice]
         with st.spinner(f"Generating audio in {language_choice}..."):
-            audio_path = generate_voice(ai_summary, lang_code)
+            audio_path = generate_voice(final_text, lang_code)
         if audio_path:
             st.audio(audio_path, format="audio/mp3")
         else:
