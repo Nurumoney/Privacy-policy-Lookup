@@ -5,12 +5,16 @@ import PyPDF2
 from gtts import gTTS
 import tempfile
 
-# Import for offline ML summarization
+# Offline ML summarization
+import nltk
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.text_rank import TextRankSummarizer
 
-# --- App Setup ---
+# Download NLTK tokenizer
+nltk.download("punkt")
+
+# --- Streamlit Page Config ---
 st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
 st.title("🔍 Privacy Policy Lookup (Offline AI Summary)")
 
@@ -63,7 +67,7 @@ def summarize_with_local_model(text, sentence_count=5):
 
 def generate_voice(summary_text, lang_code):
     try:
-        short_text = summary_text[:500]  # Truncate long text for safety
+        short_text = summary_text[:500]  # Limit text length
         tts = gTTS(short_text, lang=lang_code)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
             tts.save(fp.name)
@@ -99,7 +103,7 @@ if final_text:
         st.write(final_text[:5000])
 
     st.subheader("🧠 AI Summary (Offline TextRank)")
-    with st.spinner("Generating local summary..."):
+    with st.spinner("Generating summary..."):
         ai_summary = summarize_with_local_model(final_text)
     st.info(ai_summary)
 
@@ -113,6 +117,8 @@ if final_text:
             audio_path = generate_voice(ai_summary, lang_code)
         if audio_path:
             st.audio(audio_path, format="audio/mp3")
+        else:
+            st.warning("Audio generation failed.")
 
     st.subheader("🚨 Risk Detection Results")
     risks, suspicious_lines = analyze_policy(final_text)
