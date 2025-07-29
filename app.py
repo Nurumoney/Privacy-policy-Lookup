@@ -1,23 +1,19 @@
 import streamlit as st
+import PyPDF2
 import requests
 from bs4 import BeautifulSoup
-import PyPDF2
-from gtts import gTTS
+from TTS.api import TTS
 import tempfile
 
-# Session setup
-if "final_text" not in st.session_state:
-    st.session_state["final_text"] = ""
-if "risks" not in st.session_state:
-    st.session_state["risks"] = []
-if "suspicious_lines" not in st.session_state:
-    st.session_state["suspicious_lines"] = []
+# Initialize TTS model once
+if "tts_model" not in st.session_state:
+    st.session_state["tts_model"] = TTS(model_name="tts_models/multilingual/multi-dataset/your_model_here", progress_bar=False)
 
 # Page config
-st.set_page_config(page_title="Privacy Policy Checker", layout="wide")
+st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
 st.title("🔍 Privacy Policy Lookup")
 
-# Extractors
+# Extraction functions
 def extract_text_from_pdf(uploaded_file):
     reader = PyPDF2.PdfReader(uploaded_file)
     return ''.join([page.extract_text() or "" for page in reader.pages])
@@ -34,7 +30,6 @@ def analyze_policy(text):
     text = text.lower()
     risks = []
     suspicious_lines = []
-
     rules = {
         "📍 Location Tracking": ["gps", "track location", "access location"],
         "📞 Contact Access": ["contact list", "phonebook", "access contacts"],
@@ -42,7 +37,6 @@ def analyze_policy(text):
         "📡 Device Monitoring": ["microphone", "camera", "call logs"],
         "🔗 Data Sharing": ["third parties", "affiliates", "advertisers", "sell your data"]
     }
-
     for line in text.split('\n'):
         for risk_label, terms in rules.items():
             for term in terms:
@@ -52,32 +46,30 @@ def analyze_policy(text):
                     break
     return list(set(risks)), list(set(suspicious_lines))
 
-# TTS function
+# TTS with Coqui
 def generate_voice(text, lang_code):
     translations = {
         "ha": "Gargaɗi! Wannan manhaja na iya tattara bayanan ka ba tare da izini ba.",
         "yo": "Ikilọ! Ìlànà ìpamọ yìí lè kó alaye rẹ lọ lai fi to ọ létí."
     }
-    short_text = translations.get(lang_code, text[:500])
+    spoken_text = translations.get(lang_code, text[:500])
     try:
-        tts = gTTS(short_text, lang="en")  # still English voice
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
-            tts.save(fp.name)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as fp:
+            st.session_state["tts_model"].tts_to_file(text=spoken_text, file_path=fp.name)
             return fp.name, None
     except Exception as e:
         return None, str(e)
 
-# Sidebar
+# Sidebar input
 st.sidebar.header("📥 Input Options")
 source_option = st.sidebar.radio("Select source:", ["Paste Text", "Upload PDF", "Enter URL"])
-uploaded_file = raw_text = url = ""
+raw_text = url = ""
+uploaded_file = None
 
 if source_option == "Paste Text":
-    raw_text = st.text_area("📋 Paste text here:", height=300)
-
+    raw_text = st.text_area("📋 Paste Privacy Policy Text", height=300)
 elif source_option == "Upload PDF":
-    uploaded_file = st.file_uploader("📄 Upload a PDF", type=["pdf"])
-
+    uploaded_file = st.file_uploader("📄 Upload a PDF File", type=["pdf"])
 elif source_option == "Enter URL":
     url = st.text_input("🌐 Enter Privacy Policy URL")
 
@@ -89,40 +81,39 @@ if st.button("Analyze"):
     elif source_option == "Enter URL" and url.strip():
         st.session_state["final_text"] = extract_text_from_url(url.strip())
     else:
-        st.warning("Please provide input.")
+        st.warning("⚠️ Please provide input.")
 
-    # Analyze
     st.session_state["risks"], st.session_state["suspicious_lines"] = analyze_policy(st.session_state["final_text"])
 
 # Display results
-if st.session_state["final_text"]:
+if "final_text" in st.session_state:
     st.subheader("📄 Extracted Policy Text")
     with st.expander("Click to view full text"):
         st.write(st.session_state["final_text"][:5000])
 
-    st.subheader("🧠 Risk Diagnosis")
+    st.subheader("🧠 AI Diagnosis")
     if st.session_state["risks"]:
         for risk in st.session_state["risks"]:
             st.error(risk)
     else:
-        st.success("✅ No major red flags found.")
+        st.success("✅ No major red flags detected.")
 
-    st.subheader("🔎 Suspicious Lines")
+    st.subheader("🧾 Suspicious Lines")
     for line in st.session_state["suspicious_lines"]:
         st.code(line)
 
-    st.subheader("🎧 Voice Summary (Local Language)")
-    lang_choice = st.selectbox("Choose summary language", ["None", "Hausa", "Yoruba"], key="voice_lang")
+    st.subheader("🎧 Voice Summary")
+    lang_choice = st.selectbox("Choose Language", ["None", "Hausa", "Yoruba"], key="tts_lang")
     lang_map = {"Hausa": "ha", "Yoruba": "yo"}
 
     if lang_choice in lang_map:
         summary = (
-            "This policy may contain serious privacy risks."
+            "This privacy policy may contain serious risks."
             if st.session_state["risks"]
-            else "This policy appears to be safe with no risky flags."
+            else "This policy appears safe with no critical issues."
         )
-        audio_file, err = generate_voice(summary, lang_map[lang_choice])
+        audio_file, error = generate_voice(summary, lang_map[lang_choice])
         if audio_file:
             st.audio(audio_file)
         else:
-            st.warning(f"❌ Voice error: {err}")
+            st.error(f"Audio error: {error}")
