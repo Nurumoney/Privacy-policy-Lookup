@@ -1,7 +1,5 @@
-streamlit
-requests
-beautifulsoup4
-PyPDF2
-TTS
-sumy
-nltk
+streamlit==1.35.0
+TTS==0.22.0
+PyPDF2==3.0.1
+requests==2.31.0
+beautifulsoup4==4.12.3
