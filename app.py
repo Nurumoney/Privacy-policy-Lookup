@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import tempfile
 
 # --- CONFIG ---
-TTS_API_URL = "https://privacy-policy-lookup.onrender.com/speak"  
+TTS_API_URL = "https://tts-api-fz3e.onrender.com/speak"  
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Privacy Policy Lookup", layout="wide")
